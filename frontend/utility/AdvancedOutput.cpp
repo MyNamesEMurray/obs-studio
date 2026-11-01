@@ -320,6 +320,8 @@ inline void AdvancedOutput::SetupStreaming()
 
 	obs_encoder_set_scaled_size(videoStreaming, cx, cy);
 	obs_encoder_set_gpu_scale_type(videoStreaming, (obs_scale_type)rescaleFilter);
+	bool streamHalfRate = config_get_bool(main->Config(), "Output", "StreamHalfRate");
+	obs_encoder_set_frame_rate_divisor(videoStreaming, (streamHalfRate && !useStreamEncoder) ? 2 : 1);
 
 	const char *id = obs_service_get_id(main->GetService());
 	if (strcmp(id, "rtmp_custom") == 0) {
@@ -743,7 +745,7 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	obs_data_set_bool(settings, "low_latency_mode_enabled", enableLowLatencyMode);
 #endif
 	obs_data_set_bool(settings, "dyn_bitrate", enableDynBitrate);
-	obs_data_set_bool(settings, "half_rate", config_get_bool(main->Config(), "Output", "StreamHalfRate"));
+	obs_data_set_bool(settings, "half_rate", config_get_bool(main->Config(), "Output", "StreamHalfRate") && useStreamEncoder);
 
 	auto streamOutput = StreamingOutput(); // shadowing is sort of bad, but also convenient
 
