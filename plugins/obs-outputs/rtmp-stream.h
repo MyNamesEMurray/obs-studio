@@ -94,6 +94,8 @@ struct rtmp_stream {
 	int64_t pframe_drop_threshold_usec;
 	int min_priority;
 	bool half_rate;
+	uint32_t half_rate_total;
+	uint32_t half_rate_dropped;
 	float congestion;
 
 	int64_t last_dts_usec;

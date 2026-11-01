@@ -1434,6 +1434,8 @@ static bool init_connect(struct rtmp_stream *stream)
 	stream->dbr_inc_bitrate = stream->dbr_orig_bitrate / 10;
 	stream->dbr_inc_timeout = 0;
 	stream->half_rate = obs_data_get_bool(settings, OPT_HALF_RATE);
+	stream->half_rate_total = 0;
+	stream->half_rate_dropped = 0;
 	stream->dbr_enabled = dbr_capable && obs_data_get_bool(settings, OPT_DYN_BITRATE);
 
 	if (obs_output_get_delay(stream->output) != 0) {
@@ -1877,9 +1879,16 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 			obs_parse_av1_packet(&new_packet, packet);
 			break;
 		}
-		if (stream->half_rate && new_packet.drop_priority == OBS_NAL_PRIORITY_DISPOSABLE) {
-			obs_encoder_packet_release(&new_packet);
-			return;
+		if (stream->half_rate) {
+			bool drop = new_packet.drop_priority == OBS_NAL_PRIORITY_DISPOSABLE;
+			stream->half_rate_dropped += drop;
+			if (++stream->half_rate_total == 300 && !stream->half_rate_dropped)
+				warn("Half rate is on but the encoder produced no non-reference frames; "
+				     "stream is NOT reduced. Set the encoder to 1 non-reference B-frame.");
+			if (drop) {
+				obs_encoder_packet_release(&new_packet);
+				return;
+			}
 		}
 	} else {
 		if (!stream->got_first_packet) {

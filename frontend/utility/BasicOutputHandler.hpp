@@ -17,6 +17,19 @@ class OBSBasic;
 
 using SetupStreamingContinuation_t = std::function<void(bool)>;
 
+static inline void LogStreamEncoder(obs_encoder_t *enc, bool halfRate)
+{
+	struct obs_video_info ovi;
+	if (!obs_get_video_info(&ovi))
+		return;
+	uint32_t div = obs_encoder_get_frame_rate_divisor(enc);
+	double fps = (double)ovi.fps_num / ovi.fps_den / div;
+	blog(LOG_INFO, "Stream encoder: %ux%u @ %.2f fps (divisor %u, half rate %s)", obs_encoder_get_width(enc),
+	     obs_encoder_get_height(enc), fps, div, halfRate ? "on" : "off");
+	if (fps > 60.0)
+		blog(LOG_WARNING, "Stream encoder runs above 60 fps; most services cap at 60. Enable 'Stream at half the output frame rate'.");
+}
+
 struct BasicOutputHandler {
 	OBSOutputAutoRelease fileOutput;
 	OBSOutputAutoRelease streamOutput;
