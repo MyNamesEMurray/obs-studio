@@ -8631,6 +8631,16 @@
                      </property>
                     </widget>
                    </item>
+                   <item row="4" column="1">
+                    <widget class="QCheckBox" name="streamHalfRate">
+                     <property name="toolTip">
+                      <string>Basic.Settings.Output.StreamHalfRate.TT</string>
+                     </property>
+                     <property name="text">
+                      <string>Basic.Settings.Output.StreamHalfRate</string>
+                     </property>
+                    </widget>
+                   </item>
                   </layout>
                  </widget>
                 </item>
@@ -9000,6 +9010,7 @@
   <tabstop>reconnectMaxRetries</tabstop>
   <tabstop>bindToIP</tabstop>
   <tabstop>dynBitrate</tabstop>
+  <tabstop>streamHalfRate</tabstop>
   <tabstop>enableNewSocketLoop</tabstop>
   <tabstop>enableLowLatencyMode</tabstop>
   <tabstop>browserHWAccel</tabstop>

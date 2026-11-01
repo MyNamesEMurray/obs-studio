@@ -577,6 +577,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->hotkeyFocusType,      COMBO_CHANGED,  ADV_CHANGED);
 	HookWidget(ui->autoRemux,            CHECK_CHANGED,  ADV_CHANGED);
 	HookWidget(ui->dynBitrate,           CHECK_CHANGED,  ADV_CHANGED);
+	HookWidget(ui->streamHalfRate,       CHECK_CHANGED,  ADV_CHANGED);
 	/* clang-format on */
 
 #define ADD_HOTKEY_FOCUS_TYPE(s) ui->hotkeyFocusType->addItem(QTStr("Basic.Settings.Advanced.Hotkeys." s), s)
@@ -2613,6 +2614,7 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	bool autoRemux = config_get_bool(main->Config(), "Video", "AutoRemux");
 	const char *hotkeyFocusType = config_get_string(App()->GetUserConfig(), "General", "HotkeyFocusType");
 	bool dynBitrate = config_get_bool(main->Config(), "Output", "DynamicBitrate");
+	bool streamHalfRate = config_get_bool(main->Config(), "Output", "StreamHalfRate");
 	const char *ipFamily = config_get_string(main->Config(), "Output", "IPFamily");
 	bool confirmOnExit = config_get_bool(App()->GetUserConfig(), "General", "ConfirmOnExit");
 
@@ -2644,6 +2646,7 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	ui->streamDelayEnable->setChecked(enableDelay);
 	ui->autoRemux->setChecked(autoRemux);
 	ui->dynBitrate->setChecked(dynBitrate);
+	ui->streamHalfRate->setChecked(streamHalfRate);
 
 	SetComboByValue(ui->colorFormat, videoColorFormat);
 	SetComboByValue(ui->colorSpace, videoColorSpace);
@@ -3338,6 +3341,7 @@ void OBSBasicSettings::SaveAdvancedSettings()
 	SaveComboData(ui->ipFamily, "Output", "IPFamily");
 	SaveCheckBox(ui->autoRemux, "Video", "AutoRemux");
 	SaveCheckBox(ui->dynBitrate, "Output", "DynamicBitrate");
+	SaveCheckBox(ui->streamHalfRate, "Output", "StreamHalfRate");
 
 	if (obs_audio_monitoring_available()) {
 		QString newDevice = ui->monitoringDevice->currentData().toString();
@@ -5797,6 +5801,7 @@ void OBSBasicSettings::UpdateAdvNetworkGroup()
 	ui->bindToIPLabel->setVisible(enabled);
 	ui->bindToIP->setVisible(enabled);
 	ui->dynBitrate->setVisible(enabled);
+	ui->streamHalfRate->setVisible(enabled);
 	ui->ipFamilyLabel->setVisible(enabled);
 	ui->ipFamily->setVisible(enabled);
 #ifdef _WIN32
