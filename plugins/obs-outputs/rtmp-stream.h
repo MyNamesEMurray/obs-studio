@@ -23,6 +23,7 @@
 #define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
 #define OPT_DYN_BITRATE "dyn_bitrate"
+#define OPT_HALF_RATE "half_rate"
 #define OPT_DYN_BITRATE_INTERPOLATION_TABLE_DATA "interpolation_table_data"
 #define OPT_DROP_THRESHOLD "drop_threshold_ms"
 #define OPT_PFRAME_DROP_THRESHOLD "pframe_drop_threshold_ms"
@@ -92,6 +93,7 @@ struct rtmp_stream {
 	int64_t drop_threshold_usec;
 	int64_t pframe_drop_threshold_usec;
 	int min_priority;
+	bool half_rate;
 	float congestion;
 
 	int64_t last_dts_usec;
