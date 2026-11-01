@@ -37,6 +37,7 @@
 #define SETTING_TRANSPARENCY         "allow_transparency"
 #define SETTING_PREMULTIPLIED_ALPHA  "premultiplied_alpha"
 #define SETTING_LIMIT_FRAMERATE      "limit_framerate"
+#define SETTING_MAX_FPS              "max_fps"
 #define SETTING_CAPTURE_OVERLAYS     "capture_overlays"
 #define SETTING_ANTI_CHEAT_HOOK      "anti_cheat_hook"
 #define SETTING_HOOK_RATE            "hook_rate"
@@ -107,6 +108,7 @@ struct game_capture_config {
 	bool allow_transparency;
 	bool premultiplied_alpha;
 	bool limit_framerate;
+	int max_fps;
 	bool capture_overlays;
 	bool anticheat_hook;
 	enum hook_rate hook_rate;
@@ -441,6 +443,7 @@ static inline void get_config(struct game_capture_config *cfg, obs_data_t *setti
 	cfg->allow_transparency = obs_data_get_bool(settings, SETTING_TRANSPARENCY);
 	cfg->premultiplied_alpha = obs_data_get_bool(settings, SETTING_PREMULTIPLIED_ALPHA);
 	cfg->limit_framerate = obs_data_get_bool(settings, SETTING_LIMIT_FRAMERATE);
+	cfg->max_fps = (int)obs_data_get_int(settings, SETTING_MAX_FPS);
 	cfg->capture_overlays = obs_data_get_bool(settings, SETTING_CAPTURE_OVERLAYS);
 	cfg->anticheat_hook = obs_data_get_bool(settings, SETTING_ANTI_CHEAT_HOOK);
 	cfg->hook_rate = (enum hook_rate)obs_data_get_int(settings, SETTING_HOOK_RATE);
@@ -470,6 +473,9 @@ static inline bool capture_needs_reset(struct game_capture_config *cfg1, struct 
 		return true;
 
 	} else if (cfg1->limit_framerate != cfg2->limit_framerate) {
+		return true;
+
+	} else if (cfg1->max_fps != cfg2->max_fps) {
 		return true;
 
 	} else if (cfg1->capture_overlays != cfg2->capture_overlays) {
@@ -766,7 +772,9 @@ static inline void reset_frame_interval(struct game_capture *gc)
 		 * running at 900 FPS is being captured without some sort of
 		 * limited capture interval, it will dramatically reduce
 		 * performance. */
-		if (!gc->config.limit_framerate)
+		if (gc->config.max_fps > 0)
+			interval = 1000000000ULL / gc->config.max_fps;
+		else if (!gc->config.limit_framerate)
 			interval /= 2;
 	}
 
@@ -2113,6 +2121,7 @@ static void game_capture_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, SETTING_TRANSPARENCY, false);
 	obs_data_set_default_bool(settings, SETTING_PREMULTIPLIED_ALPHA, false);
 	obs_data_set_default_bool(settings, SETTING_LIMIT_FRAMERATE, false);
+	obs_data_set_default_int(settings, SETTING_MAX_FPS, 0);
 	obs_data_set_default_bool(settings, SETTING_CAPTURE_OVERLAYS, false);
 	obs_data_set_default_bool(settings, SETTING_ANTI_CHEAT_HOOK, true);
 	obs_data_set_default_int(settings, SETTING_HOOK_RATE, (int)HOOK_RATE_NORMAL);
@@ -2270,6 +2279,9 @@ static obs_properties_t *game_capture_properties(void *data)
 	obs_properties_add_bool(ppts, SETTING_PREMULTIPLIED_ALPHA, TEXT_PREMULTIPLIED_ALPHA);
 
 	obs_properties_add_bool(ppts, SETTING_LIMIT_FRAMERATE, TEXT_LIMIT_FRAMERATE);
+
+	obs_property_t *max_fps = obs_properties_add_int(ppts, SETTING_MAX_FPS, obs_module_text("GameCapture.MaxFPS"), 0, 1000, 1);
+	obs_property_set_long_description(max_fps, obs_module_text("GameCapture.MaxFPS.TT"));
 
 	obs_properties_add_bool(ppts, SETTING_CURSOR, TEXT_CAPTURE_CURSOR);
 
