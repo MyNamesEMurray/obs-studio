@@ -19,6 +19,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Tag version for CMake
+        run: git tag 32.0.0-fork
+
       - name: Build OBS Studio
         uses: ./.github/actions/build-obs
         with:
