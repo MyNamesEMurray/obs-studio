@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Tag version for CMake
-        run: git tag 32.0.0-fork
+        run: git tag 33.0.1-fork
 
       - name: Build OBS Studio
         uses: ./.github/actions/build-obs
@@ -39,4 +39,5 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: obs-studio-windows-x64-${{ github.sha }}
+          retention-days: 7
           path: ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip

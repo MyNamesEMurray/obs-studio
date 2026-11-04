@@ -1882,9 +1882,14 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 		if (stream->half_rate) {
 			bool drop = new_packet.drop_priority == OBS_NAL_PRIORITY_DISPOSABLE;
 			stream->half_rate_dropped += drop;
-			if (++stream->half_rate_total == 300 && !stream->half_rate_dropped)
-				warn("Half rate is on but the encoder produced no non-reference frames; "
-				     "stream is NOT reduced. Set the encoder to 1 non-reference B-frame.");
+			if (++stream->half_rate_total == 300) {
+				uint32_t pct = stream->half_rate_dropped * 100 / 300;
+				if (pct < 45 || pct > 55)
+					warn("Half rate is on but only %u%% of video packets were non-reference "
+					     "frames (expected 50%%); the stream is NOT halved. Set the encoder "
+					     "to 1 non-reference B-frame (x264: bframes=1 b-adapt=0 b-pyramid=none).",
+					     pct);
+			}
 			if (drop) {
 				obs_encoder_packet_release(&new_packet);
 				return;

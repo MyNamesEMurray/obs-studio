@@ -62,23 +62,35 @@ def main():
                              "-c", "copy", stream_file])
     time.sleep(2)
 
-    cl = obs.ReqClient(host=args.host, port=args.port, password=args.password, timeout=10)
-    base = cl.get_stats()
-    cl.start_stream()
-    cl.start_record()
+    cl = None
+    try:
+        cl = obs.ReqClient(host=args.host, port=args.port, password=args.password, timeout=10)
+        base = cl.get_stats()
+        cl.start_stream()
+        cl.start_record()
 
-    cpu, render_ms, fps = [], [], []
-    for _ in range(args.seconds):
-        time.sleep(1)
-        s = cl.get_stats()
-        cpu.append(s.cpu_usage)
-        render_ms.append(s.average_frame_render_time)
-        fps.append(s.active_fps)
+        cpu, render_ms, fps = [], [], []
+        for _ in range(args.seconds):
+            time.sleep(1)
+            s = cl.get_stats()
+            cpu.append(s.cpu_usage)
+            render_ms.append(s.average_frame_render_time)
+            fps.append(s.active_fps)
 
-    end = cl.get_stats()
-    rec_path = cl.stop_record().output_path
-    cl.stop_stream()
-    sink.wait(timeout=30)
+        end = cl.get_stats()
+        rec_path = cl.stop_record().output_path
+        cl.stop_stream()
+        sink.wait(timeout=30)
+    finally:
+        if cl is not None:
+            for stop in (cl.stop_record, cl.stop_stream):
+                try:
+                    stop()
+                except Exception:
+                    pass
+        if sink.poll() is None:
+            sink.kill()
+            sink.wait()
 
     out_total = end.output_total_frames - base.output_total_frames
     out_skip = end.output_skipped_frames - base.output_skipped_frames

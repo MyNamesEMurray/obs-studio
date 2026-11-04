@@ -321,7 +321,8 @@ inline void AdvancedOutput::SetupStreaming()
 	obs_encoder_set_scaled_size(videoStreaming, cx, cy);
 	obs_encoder_set_gpu_scale_type(videoStreaming, (obs_scale_type)rescaleFilter);
 	bool streamHalfRate = config_get_bool(main->Config(), "Output", "StreamHalfRate");
-	obs_encoder_set_frame_rate_divisor(videoStreaming, (streamHalfRate && !useStreamEncoder) ? 2 : 1);
+	if (!obs_encoder_active(videoStreaming))
+		obs_encoder_set_frame_rate_divisor(videoStreaming, (streamHalfRate && !useStreamEncoder) ? 2 : 1);
 
 	const char *id = obs_service_get_id(main->GetService());
 	if (strcmp(id, "rtmp_custom") == 0) {

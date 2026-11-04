@@ -5836,6 +5836,7 @@ void OBSBasicSettings::UpdateMultitrackVideo()
 	ui->multitrackVideoGroupBox->setVisible(available);
 
 	ui->enableMultitrackVideo->setEnabled(toggle_available);
+	ui->streamHalfRate->setEnabled(!(available && ui->enableMultitrackVideo->isChecked()));
 
 	ui->multitrackVideoMaximumAggregateBitrateLabel->setEnabled(toggle_available &&
 								    ui->enableMultitrackVideo->isChecked());
