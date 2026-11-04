@@ -113,6 +113,9 @@ struct ffmpeg_output {
 #ifdef NEW_MPEGTS_OUTPUT
 	/* used for SRT & RIST */
 	URLContext *h;
+	uint32_t fps_divisor;
+	uint32_t divisor_total;
+	uint32_t divisor_dropped;
 	AVIOContext *s;
 	bool got_headers;
 

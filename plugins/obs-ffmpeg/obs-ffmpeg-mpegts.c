@@ -21,6 +21,9 @@
 #include <util/dstr.h>
 #include <util/darray.h>
 #include <util/platform.h>
+#include <obs-avc.h>
+#include <obs-hevc.h>
+#include <obs-nal.h>
 
 #include "obs-ffmpeg-output.h"
 #include "obs-ffmpeg-formats.h"
@@ -1184,6 +1187,11 @@ static bool ffmpeg_mpegts_start(void *data)
 	stream->video_start_ts = 0;
 	stream->total_bytes = 0;
 	stream->got_headers = false;
+	obs_data_t *out_settings = obs_output_get_settings(stream->output);
+	stream->fps_divisor = (uint32_t)obs_data_get_int(out_settings, "fps_divisor");
+	obs_data_release(out_settings);
+	stream->divisor_total = 0;
+	stream->divisor_dropped = 0;
 
 	pthread_create(&stream->start_stop_thread, NULL, start_stop_thread_fn, cmd);
 	os_atomic_set_bool(&stream->start_stop_thread_active, true);
@@ -1352,6 +1360,28 @@ static void ffmpeg_mpegts_data(void *data, struct encoder_packet *packet)
 			ffmpeg_mpegts_stop_internal(stream, 0, false);
 			return;
 		}
+	}
+
+	if (packet->type == OBS_ENCODER_VIDEO && stream->fps_divisor > 1) {
+		const char *codec = obs_encoder_get_codec(packet->encoder);
+		int priority = -1;
+		if (strcmp(codec, "h264") == 0)
+			priority = obs_parse_avc_packet_priority(packet);
+		else if (strcmp(codec, "hevc") == 0)
+			priority = obs_parse_hevc_packet_priority(packet);
+
+		bool drop = priority == OBS_NAL_PRIORITY_DISPOSABLE;
+		stream->divisor_dropped += drop;
+		if (++stream->divisor_total == 300) {
+			int pct = (int)(stream->divisor_dropped * 100 / 300);
+			int want = (int)((stream->fps_divisor - 1) * 100 / stream->fps_divisor);
+			if (abs(pct - want) > 5)
+				warn("Frame rate divisor %u expects %d%% non-reference video packets but %d%% arrived; "
+				     "the stream is NOT reduced as configured.",
+				     stream->fps_divisor, want, pct);
+		}
+		if (drop)
+			return;
 	}
 
 	mpegts_write_packet(stream, packet);

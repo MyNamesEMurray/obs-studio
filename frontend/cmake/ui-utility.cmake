@@ -6,6 +6,7 @@ target_sources(
     utility/BaseLexer.hpp
     utility/BasicOutputHandler.cpp
     utility/BasicOutputHandler.hpp
+    utility/StreamFpsDivisor.hpp
     utility/CrashHandler.cpp
     utility/CrashHandler.hpp
     utility/FFmpegCodec.cpp

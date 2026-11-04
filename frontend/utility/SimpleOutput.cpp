@@ -729,12 +729,14 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 	obs_data_set_bool(settings, "low_latency_mode_enabled", enableLowLatencyMode);
 #endif
 	obs_data_set_bool(settings, "dyn_bitrate", enableDynBitrate);
-	bool halfRate = config_get_bool(main->Config(), "Output", "StreamHalfRate");
+	uint32_t fpsDivisor = GetStreamFpsDivisor(main->Config());
 	bool sharedEncoder = videoRecording == videoStreaming;
 	if (!obs_encoder_active(videoStreaming))
-		obs_encoder_set_frame_rate_divisor(videoStreaming, (halfRate && !sharedEncoder) ? 2 : 1);
-	obs_data_set_bool(settings, "half_rate", halfRate && sharedEncoder);
-	LogStreamEncoder(videoStreaming, halfRate);
+		obs_encoder_set_frame_rate_divisor(videoStreaming, sharedEncoder ? 1 : fpsDivisor);
+	uint32_t dropDivisor = sharedEncoder ? fpsDivisor : 1;
+	obs_data_set_int(settings, "fps_divisor", dropDivisor);
+	ApplyDivisorEncoderSettings(videoStreaming, dropDivisor);
+	LogStreamEncoder(videoStreaming, dropDivisor);
 
 	auto streamOutput = StreamingOutput(); // shadowing is sort of bad, but also convenient
 

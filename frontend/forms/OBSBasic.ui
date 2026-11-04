@@ -881,6 +881,7 @@
     <addaction name="actionRemoveProfile"/>
     <addaction name="actionImportProfile"/>
     <addaction name="actionExportProfile"/>
+    <addaction name="actionApplyDualRatePreset"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="sceneCollectionMenu">
@@ -1948,6 +1949,11 @@
   <action name="actionExportProfile">
    <property name="text">
     <string>Basic.MainMenu.Export</string>
+   </property>
+  </action>
+  <action name="actionApplyDualRatePreset">
+   <property name="text">
+    <string>Basic.MainMenu.Profile.DualRatePreset</string>
    </property>
   </action>
   <action name="actionShowSettingsFolder">

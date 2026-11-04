@@ -940,6 +940,7 @@ private slots:
 	void on_actionRemoveProfile_triggered(bool skipConfirmation = false);
 	void on_actionImportProfile_triggered();
 	void on_actionExportProfile_triggered();
+	void on_actionApplyDualRatePreset_triggered();
 
 public slots:
 	bool CreateNewProfile(const QString &name);

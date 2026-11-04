@@ -19,7 +19,7 @@ Exit code 1 and `FAIL:` lines when a check misses. Each run appends one row to `
 `python test_analyze.py` checks the fps math without OBS.
 
 ## Regression check: half-rate on a shared encoder
-Use one encoder for stream and recording, set it to 1 non-reference B-frame (x264 custom options `bframes=1 b-adapt=0 b-pyramid=none`, or NVENC B-frames 1 with B-ref mode off), tick "Stream at half the output frame rate", then run:
+Use one encoder for stream and recording, set it to 1 non-reference B-frame (x264 custom options `bframes=1 b-adapt=0 b-pyramid=none`, or NVENC B-frames 1 with B-ref mode off), set Settings > Advanced > Network > "Stream frame rate" to "1/2 of output", then run:
 ```
 python obs_perf_test.py --label shared_half --rec-fps 120 --stream-fps 60 --tol 0.02
 ```
@@ -31,3 +31,6 @@ It fails if the stream is not 60 fps or the recording is not 120 fps. Run it aga
 python compare_rates.py REC.mkv STREAM.flv --seconds 10 --out compare.mp4
 ```
 Writes a side-by-side clip (120 fps recording left, 60 fps stream right) plus a 0.25x slow-motion copy. It aligns the two files by matching a high-motion second, so the scene must be moving. Windows only as written: it expects `arial.ttf` in the current folder.
+
+## Encoder advisor
+`python encoder_advisor.py` benchmarks every encoder ffmpeg can use on this PC (x264, x265, SVT-AV1, NVENC, QuickSync, AMF), scores each with VMAF against a lossless reference, and prints the best choice that encodes fast enough for live use, with the matching OBS encoder id. Pass `--input yourclip.mp4` with real game footage for meaningful scores; without it a synthetic test pattern is used. Needs an ffmpeg build with libvmaf. Options: `--mode stream|record|both`, `--seconds`, `--record-res/fps/bitrate`, `--stream-res/fps/bitrate`.

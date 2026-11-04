@@ -214,8 +214,9 @@ static void build_flv_meta_data(obs_output_t *context, uint8_t **output, size_t 
 	enc_num_val(&enc, end, "videodatarate", encoder_bitrate(vencoder));
 	double fps = video_output_get_frame_rate(video) / obs_encoder_get_frame_rate_divisor(vencoder);
 	obs_data_t *settings = obs_output_get_settings(context);
-	if (obs_data_get_bool(settings, "half_rate"))
-		fps /= 2;
+	long long fps_divisor = obs_data_get_int(settings, "fps_divisor");
+	if (fps_divisor > 1)
+		fps /= (double)fps_divisor;
 	obs_data_release(settings);
 	enc_num_val(&enc, end, "framerate", fps);
 

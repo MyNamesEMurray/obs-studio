@@ -60,6 +60,9 @@ private:
 	std::thread start_stop_thread;
 
 	uint32_t base_ssrc;
+	uint32_t fps_divisor = 1;
+	uint32_t divisor_total = 0;
+	uint32_t divisor_dropped = 0;
 	std::shared_ptr<rtc::PeerConnection> peer_connection;
 	std::shared_ptr<rtc::Track> audio_track;
 	std::shared_ptr<rtc::Track> video_track;

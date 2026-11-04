@@ -39,9 +39,11 @@ class OBSBasicStats : public QFrame {
 		QPointer<QLabel> droppedFrames;
 		QPointer<QLabel> megabytesSent;
 		QPointer<QLabel> bitrate;
+		QPointer<QLabel> outputFps;
 
 		uint64_t lastBytesSent = 0;
 		uint64_t lastBytesSentTime = 0;
+		uint64_t lastFrames = 0;
 
 		int first_total = 0;
 		int first_dropped = 0;

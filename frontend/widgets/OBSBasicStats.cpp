@@ -1,5 +1,6 @@
 #include "OBSBasicStats.hpp"
 
+#include <utility/StreamFpsDivisor.hpp>
 #include <widgets/OBSBasic.hpp>
 
 #include <qt-wrappers.hpp>
@@ -133,6 +134,7 @@ OBSBasicStats::OBSBasicStats(QWidget *parent, bool closable)
 	addOutputCol("Basic.Stats.DroppedFrames");
 	addOutputCol("Basic.Stats.MegabytesSent");
 	addOutputCol("Basic.Stats.Bitrate");
+	addOutputCol("Basic.Stats.OutputFps");
 
 	/* --------------------------------------------- */
 
@@ -241,6 +243,7 @@ void OBSBasicStats::AddOutputLabels(QString name)
 	ol.droppedFrames = new QLabel(this);
 	ol.megabytesSent = new QLabel(this);
 	ol.bitrate = new QLabel(this);
+	ol.outputFps = new QLabel(this);
 
 	int col = 0;
 	int row = outputLabels.size() + 1;
@@ -249,6 +252,7 @@ void OBSBasicStats::AddOutputLabels(QString name)
 	outputLayout->addWidget(ol.droppedFrames, row, col++);
 	outputLayout->addWidget(ol.megabytesSent, row, col++);
 	outputLayout->addWidget(ol.bitrate, row, col++);
+	outputLayout->addWidget(ol.outputFps, row, col++);
 	outputLabels.push_back(ol);
 }
 
@@ -488,6 +492,18 @@ void OBSBasicStats::Reset()
 	Update();
 }
 
+static bool OutputVideoFramesSent(obs_output_t *output, uint64_t &frames)
+{
+	calldata_t cd = {};
+	long long value = 0;
+	proc_handler_t *ph = obs_output_get_proc_handler(output);
+	bool ok = ph && proc_handler_call(ph, "get_video_frames_sent", &cd) && calldata_get_int(&cd, "frames", &value);
+	calldata_free(&cd);
+	if (ok)
+		frames = (uint64_t)value;
+	return ok;
+}
+
 void OBSBasicStats::OutputLabels::Update(obs_output_t *output, bool rec)
 {
 	uint64_t totalBytes = output ? obs_output_get_total_bytes(output) : 0;
@@ -575,6 +591,28 @@ void OBSBasicStats::OutputLabels::Update(obs_output_t *output, bool rec)
 			setClasses(droppedFrames, "");
 		}
 	}
+
+	uint64_t frames = 0;
+	if (active && !OutputVideoFramesSent(output, frames))
+		frames = obs_output_get_total_frames(output);
+	if (!active || frames < lastFrames || timePassed < 0.01l) {
+		if (!active)
+			outputFps->setText("-");
+	} else {
+		long double outFps = (long double)(frames - lastFrames) / timePassed;
+		outputFps->setText(QString::number((double)outFps, 'f', 1));
+
+		struct obs_video_info ovi;
+		if (!rec && obs_get_video_info(&ovi)) {
+			long double expected = (long double)ovi.fps_num / ovi.fps_den /
+					       GetStreamFpsDivisor(OBSBasic::Get()->Config());
+			if (outFps < expected * 0.8l || outFps > expected * 1.2l)
+				setClasses(outputFps, "text-warning");
+			else
+				setClasses(outputFps, "");
+		}
+	}
+	lastFrames = active ? frames : 0;
 
 	lastBytesSent = bytesSent;
 	lastBytesSentTime = curTime;

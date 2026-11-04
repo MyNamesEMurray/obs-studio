@@ -151,10 +151,18 @@ static void rtmp_stream_destroy(void *data)
 	bfree(stream);
 }
 
+static void rtmp_stream_get_video_frames_sent(void *data, calldata_t *cd)
+{
+	struct rtmp_stream *stream = data;
+	calldata_set_int(cd, "frames", os_atomic_load_long(&stream->video_frames_sent));
+}
+
 static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct rtmp_stream *stream = bzalloc(sizeof(struct rtmp_stream));
 	stream->output = output;
+	proc_handler_add(obs_output_get_proc_handler(output), "void get_video_frames_sent(out int frames)",
+			 rtmp_stream_get_video_frames_sent, stream);
 	pthread_mutex_init_value(&stream->packets_mutex);
 
 	RTMP_LogSetCallback(log_rtmp);
@@ -1433,9 +1441,10 @@ static bool init_connect(struct rtmp_stream *stream)
 	stream->dbr_est_bitrate = 0;
 	stream->dbr_inc_bitrate = stream->dbr_orig_bitrate / 10;
 	stream->dbr_inc_timeout = 0;
-	stream->half_rate = obs_data_get_bool(settings, OPT_HALF_RATE);
-	stream->half_rate_total = 0;
-	stream->half_rate_dropped = 0;
+	stream->fps_divisor = (uint32_t)obs_data_get_int(settings, OPT_FPS_DIVISOR);
+	stream->divisor_total = 0;
+	stream->divisor_dropped = 0;
+	os_atomic_set_long(&stream->video_frames_sent, 0);
 	stream->dbr_enabled = dbr_capable && obs_data_get_bool(settings, OPT_DYN_BITRATE);
 
 	if (obs_output_get_delay(stream->output) != 0) {
@@ -1879,16 +1888,18 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 			obs_parse_av1_packet(&new_packet, packet);
 			break;
 		}
-		if (stream->half_rate) {
+		if (stream->fps_divisor > 1) {
 			bool drop = new_packet.drop_priority == OBS_NAL_PRIORITY_DISPOSABLE;
-			stream->half_rate_dropped += drop;
-			if (++stream->half_rate_total == 300) {
-				uint32_t pct = stream->half_rate_dropped * 100 / 300;
-				if (pct < 45 || pct > 55)
-					warn("Half rate is on but only %u%% of video packets were non-reference "
-					     "frames (expected 50%%); the stream is NOT halved. Set the encoder "
-					     "to 1 non-reference B-frame (x264: bframes=1 b-adapt=0 b-pyramid=none).",
-					     pct);
+			stream->divisor_dropped += drop;
+			if (++stream->divisor_total == 300) {
+				int pct = (int)(stream->divisor_dropped * 100 / 300);
+				int want = (int)((stream->fps_divisor - 1) * 100 / stream->fps_divisor);
+				if (abs(pct - want) > 5)
+					warn("Frame rate divisor %u expects %d%% non-reference video packets but "
+					     "%d%% arrived; the stream is NOT reduced as configured. Set the encoder to "
+					     "%u non-reference B-frame(s) (x264: bframes=%u b-adapt=0 b-pyramid=none).",
+					     stream->fps_divisor, want, pct, stream->fps_divisor - 1,
+					     stream->fps_divisor - 1);
 			}
 			if (drop) {
 				obs_encoder_packet_release(&new_packet);
@@ -1912,6 +1923,9 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 	}
 
 	pthread_mutex_unlock(&stream->packets_mutex);
+
+	if (added_packet && packet->type == OBS_ENCODER_VIDEO)
+		os_atomic_inc_long(&stream->video_frames_sent);
 
 	if (added_packet)
 		os_sem_post(stream->send_sem);

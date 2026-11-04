@@ -32,6 +32,7 @@
 #include <utility/FFmpegCodec.hpp>
 #include <utility/FFmpegFormat.hpp>
 #include <utility/SettingsEventFilter.hpp>
+#include <utility/StreamFpsDivisor.hpp>
 #ifdef YOUTUBE_ENABLED
 #include <utility/YoutubeApiWrappers.hpp>
 #endif
@@ -577,8 +578,13 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->hotkeyFocusType,      COMBO_CHANGED,  ADV_CHANGED);
 	HookWidget(ui->autoRemux,            CHECK_CHANGED,  ADV_CHANGED);
 	HookWidget(ui->dynBitrate,           CHECK_CHANGED,  ADV_CHANGED);
-	HookWidget(ui->streamHalfRate,       CHECK_CHANGED,  ADV_CHANGED);
+	HookWidget(ui->streamFpsDivisor,     COMBO_CHANGED,  ADV_CHANGED);
 	/* clang-format on */
+
+	ui->streamFpsDivisor->addItem(QTStr("Basic.Settings.Output.StreamFpsDivisor.Full"), 1);
+	ui->streamFpsDivisor->addItem(QTStr("Basic.Settings.Output.StreamFpsDivisor.Half"), 2);
+	ui->streamFpsDivisor->addItem(QTStr("Basic.Settings.Output.StreamFpsDivisor.Third"), 3);
+	ui->streamFpsDivisor->addItem(QTStr("Basic.Settings.Output.StreamFpsDivisor.Quarter"), 4);
 
 #define ADD_HOTKEY_FOCUS_TYPE(s) ui->hotkeyFocusType->addItem(QTStr("Basic.Settings.Advanced.Hotkeys." s), s)
 
@@ -2614,7 +2620,7 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	bool autoRemux = config_get_bool(main->Config(), "Video", "AutoRemux");
 	const char *hotkeyFocusType = config_get_string(App()->GetUserConfig(), "General", "HotkeyFocusType");
 	bool dynBitrate = config_get_bool(main->Config(), "Output", "DynamicBitrate");
-	bool streamHalfRate = config_get_bool(main->Config(), "Output", "StreamHalfRate");
+	uint32_t streamFpsDivisor = GetStreamFpsDivisor(main->Config());
 	const char *ipFamily = config_get_string(main->Config(), "Output", "IPFamily");
 	bool confirmOnExit = config_get_bool(App()->GetUserConfig(), "General", "ConfirmOnExit");
 
@@ -2646,7 +2652,7 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	ui->streamDelayEnable->setChecked(enableDelay);
 	ui->autoRemux->setChecked(autoRemux);
 	ui->dynBitrate->setChecked(dynBitrate);
-	ui->streamHalfRate->setChecked(streamHalfRate);
+	ui->streamFpsDivisor->setCurrentIndex((int)streamFpsDivisor - 1);
 
 	SetComboByValue(ui->colorFormat, videoColorFormat);
 	SetComboByValue(ui->colorSpace, videoColorSpace);
@@ -3341,7 +3347,8 @@ void OBSBasicSettings::SaveAdvancedSettings()
 	SaveComboData(ui->ipFamily, "Output", "IPFamily");
 	SaveCheckBox(ui->autoRemux, "Video", "AutoRemux");
 	SaveCheckBox(ui->dynBitrate, "Output", "DynamicBitrate");
-	SaveCheckBox(ui->streamHalfRate, "Output", "StreamHalfRate");
+	if (WidgetChanged(ui->streamFpsDivisor))
+		config_set_int(main->Config(), "Output", "StreamFpsDivisor", ui->streamFpsDivisor->currentData().toInt());
 
 	if (obs_audio_monitoring_available()) {
 		QString newDevice = ui->monitoringDevice->currentData().toString();
@@ -5801,7 +5808,6 @@ void OBSBasicSettings::UpdateAdvNetworkGroup()
 	ui->bindToIPLabel->setVisible(enabled);
 	ui->bindToIP->setVisible(enabled);
 	ui->dynBitrate->setVisible(enabled);
-	ui->streamHalfRate->setVisible(enabled);
 	ui->ipFamilyLabel->setVisible(enabled);
 	ui->ipFamily->setVisible(enabled);
 #ifdef _WIN32
@@ -5836,7 +5842,9 @@ void OBSBasicSettings::UpdateMultitrackVideo()
 	ui->multitrackVideoGroupBox->setVisible(available);
 
 	ui->enableMultitrackVideo->setEnabled(toggle_available);
-	ui->streamHalfRate->setEnabled(!(available && ui->enableMultitrackVideo->isChecked()));
+	bool plainOutput = !(available && ui->enableMultitrackVideo->isChecked());
+	ui->streamFpsDivisorLabel->setEnabled(plainOutput);
+	ui->streamFpsDivisor->setEnabled(plainOutput);
 
 	ui->multitrackVideoMaximumAggregateBitrateLabel->setEnabled(toggle_available &&
 								    ui->enableMultitrackVideo->isChecked());

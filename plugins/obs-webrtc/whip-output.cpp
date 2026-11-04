@@ -2,6 +2,10 @@
 #include "whip-utils.h"
 
 #include <obs.hpp>
+#include <obs-avc.h>
+#include <obs-hevc.h>
+#include <obs-nal.h>
+#include <cstdlib>
 
 /*
  * Sets the maximum size for a video fragment. Effective range is
@@ -62,6 +66,11 @@ bool WHIPOutput::Start()
 {
 	std::lock_guard<std::mutex> l(start_stop_mutex);
 
+	OBSDataAutoRelease out_settings = obs_output_get_settings(output);
+	fps_divisor = (uint32_t)std::max<long long>(1, obs_data_get_int(out_settings, "fps_divisor"));
+	divisor_total = 0;
+	divisor_dropped = 0;
+
 	for (uint32_t idx = 0; idx < MAX_OUTPUT_VIDEO_ENCODERS; idx++) {
 		auto encoder = obs_output_get_video_encoder2(output, idx);
 		if (encoder == nullptr) {
@@ -113,6 +122,29 @@ void WHIPOutput::Data(struct encoder_packet *packet)
 		Send(packet->data, packet->size, duration, audio_track, audio_sr_reporter);
 		last_audio_timestamp = packet->dts_usec;
 	} else if (video_track && packet->type == OBS_ENCODER_VIDEO) {
+		if (fps_divisor > 1) {
+			const char *codec = obs_encoder_get_codec(packet->encoder);
+			int priority = -1;
+			if (strcmp(codec, "h264") == 0)
+				priority = obs_parse_avc_packet_priority(packet);
+			else if (strcmp(codec, "hevc") == 0)
+				priority = obs_parse_hevc_packet_priority(packet);
+
+			bool drop = priority == OBS_NAL_PRIORITY_DISPOSABLE;
+			divisor_dropped += drop;
+			if (++divisor_total == 300) {
+				int pct = (int)(divisor_dropped * 100 / 300);
+				int want = (int)((fps_divisor - 1) * 100 / fps_divisor);
+				if (abs(pct - want) > 5)
+					do_log(LOG_WARNING,
+					       "Frame rate divisor %u expects %d%% non-reference video packets but %d%% arrived; "
+					       "the stream is NOT reduced as configured.",
+					       fps_divisor, want, pct);
+			}
+			if (drop)
+				return;
+		}
+
 		auto rtp_config = video_sr_reporter->rtpConfig;
 		auto videoLayerState = videoLayerStates[packet->encoder];
 		if (videoLayerState == nullptr) {
